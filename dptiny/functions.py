@@ -3,6 +3,7 @@ from dptiny.core import Variable, as_array, as_variable, Config
 import weakref
 from abc import ABC, abstractmethod
 
+
 class Function(ABC):
     def __call__(self, *inputs):
         inputs = [as_variable(x) for x in inputs]
@@ -16,7 +17,7 @@ class Function(ABC):
             self.generation = max([x.generation for x in inputs])
             for output in outputs:
                 output.creator = self
-            
+
             self.inputs = inputs
             self.outputs = [weakref.ref(output) for output in outputs]
 
@@ -30,6 +31,7 @@ class Function(ABC):
     def backward(self, *gys):
         raise NotImplementedError()
 
+
 class Add(Function):
     def forward(self, x0, x1):
         # Handle broadcasting properly
@@ -40,26 +42,29 @@ class Add(Function):
     def backward(self, gy):
         # Handle broadcasting in backward pass
         gx0, gx1 = gy, gy
-        
+
         # Sum gradients along broadcasted dimensions if needed
         if self._x0_shape != self._x1_shape:
             if np.ndim(gx0) > len(self._x0_shape):
                 axes = tuple(range(np.ndim(gx0) - len(self._x0_shape)))
                 gx0 = gx0.sum(axis=axes, keepdims=True)
-            
+
             if np.ndim(gx1) > len(self._x1_shape):
                 axes = tuple(range(np.ndim(gx1) - len(self._x1_shape)))
                 gx1 = gx1.sum(axis=axes, keepdims=True)
-                
+
             # Handle broadcasting dimensions
-            for i, (dim0, dim1) in enumerate(zip(self._x0_shape[::-1], self._x1_shape[::-1])):
+            for i, (dim0, dim1) in enumerate(
+                zip(self._x0_shape[::-1], self._x1_shape[::-1])
+            ):
                 axis = -i - 1
                 if dim0 == 1:
                     gx0 = gx0.sum(axis=axis, keepdims=True)
                 if dim1 == 1:
                     gx1 = gx1.sum(axis=axis, keepdims=True)
-                    
+
         return gx0, gx1
+
 
 class Mul(Function):
     def forward(self, x0, x1):
@@ -68,6 +73,7 @@ class Mul(Function):
     def backward(self, gy):
         x0, x1 = self.inputs
         return gy * x1.data, gy * x0.data
+
 
 class MatMul(Function):
     def forward(self, x, W):
@@ -79,14 +85,15 @@ class MatMul(Function):
         x, W = self.inputs
         gx = gy @ W.data.T
         gW = x.data.T @ gy
-        
+
         # Handle reshaping if needed due to broadcasting
         if gx.shape != self.x_shape:
             gx = gx.reshape(self.x_shape)
         if gW.shape != self.W_shape:
             gW = gW.reshape(self.W_shape)
-            
+
         return gx, gW
+
 
 class Neg(Function):
     def forward(self, x):
@@ -95,6 +102,7 @@ class Neg(Function):
     def backward(self, gy):
         return -gy
 
+
 class Sub(Function):
     def forward(self, x0, x1):
         return x0 - x1
@@ -102,13 +110,15 @@ class Sub(Function):
     def backward(self, gy):
         return gy, -gy
 
+
 class Div(Function):
     def forward(self, x0, x1):
         return x0 / x1
 
     def backward(self, gy):
         x0, x1 = self.inputs
-        return gy / x1.data, gy * (-x0.data / x1.data ** 2)
+        return gy / x1.data, gy * (-x0.data / x1.data**2)
+
 
 class Exp(Function):
     def forward(self, x):
@@ -118,6 +128,7 @@ class Exp(Function):
         y = self.outputs[0]()
         return gy * y.data
 
+
 class Log(Function):
     def forward(self, x):
         return np.log(x)
@@ -126,14 +137,29 @@ class Log(Function):
         x = self.inputs[0]
         return gy / x.data
 
+
+class Pow(Function):
+    def forward(self, x, exponent):
+        self._exponent = exponent
+        return x**exponent
+
+    def backward(self, gy):
+        x = self.inputs[0]
+        return gy * self._exponent * (x.data ** (self._exponent - 1))
+
+
 class Sigmoid(Function):
     def forward(self, x):
-        y = 1 / (1 + np.exp(-x))
+        self._positive_mask = x >= 0
+        y = np.where(
+            self._positive_mask, 1 / (1 + np.exp(-x)), np.exp(x) / (1 + np.exp(x))
+        )
+        self._y = y
         return y
 
     def backward(self, gy):
-        y = self.outputs[0]()
-        return gy * y.data * (1 - y.data)
+        return gy * self._y * (1 - self._y)
+
 
 class ReLU(Function):
     def forward(self, x):
@@ -143,6 +169,7 @@ class ReLU(Function):
         x = self.inputs[0]
         mask = x.data > 0
         return gy * mask
+
 
 class Softmax(Function):
     def forward(self, x):
@@ -157,6 +184,7 @@ class Softmax(Function):
         sumdx = gx.sum(axis=1, keepdims=True)
         gx -= y.data * sumdx
         return gx
+
 
 class SoftmaxCrossEntropy(Function):
     def forward(self, x, t):
@@ -187,44 +215,62 @@ class SoftmaxCrossEntropy(Function):
         dx = (self.y - self.t_oh) * gy / batch_size
         return dx
 
+
 def add(x0, x1):
     return Add()(x0, x1)
+
 
 def mul(x0, x1):
     return Mul()(x0, x1)
 
+
 def neg(x):
     return Neg()(x)
+
 
 def sub(x0, x1):
     return Sub()(x0, x1)
 
+
 def div(x0, x1):
     return Div()(x0, x1)
+
 
 def rsub(x0, x1):
     return sub(x1, x0)
 
+
 def rdiv(x0, x1):
     return div(x1, x0)
+
 
 def exp(x):
     return Exp()(x)
 
+
 def log(x):
     return Log()(x)
+
 
 def sigmoid(x):
     return Sigmoid()(x)
 
+
 def relu(x):
     return ReLU()(x)
+
 
 def softmax(x):
     return Softmax()(x)
 
+
 def softmax_cross_entropy(x, t):
     return SoftmaxCrossEntropy()(x, t)
 
+
 def matmul(x, W):
     return MatMul()(x, W)
+
+
+def pow(x, exponent):
+    return Pow()(x, exponent)

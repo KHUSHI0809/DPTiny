@@ -1,18 +1,21 @@
 import numpy as np
 import weakref
 import contextlib
+import heapq
+
 
 class Config:
     enable_backprop = True
 
+
 @contextlib.contextmanager
 def no_grad():
-    """Context manager to disable gradient calculation."""
     Config.enable_backprop = False
     try:
         yield
     finally:
         Config.enable_backprop = True
+
 
 class Variable:
     __array_priority__ = 200
@@ -20,7 +23,7 @@ class Variable:
     def __init__(self, data, name=None):
         if data is not None:
             if not isinstance(data, np.ndarray):
-                raise TypeError(f'{type(data)} is not supported')
+                raise TypeError(f"{type(data)} is not supported")
         self.data = data
         self.name = name
         self._grad = None
@@ -57,19 +60,21 @@ class Variable:
         if self.grad is None:
             self.grad = np.ones_like(self.data)
 
-        funcs = []
+        heap = []
         seen_set = set()
+        counter = 0
 
         def add_func(f):
+            nonlocal counter
             if f not in seen_set:
-                funcs.append(f)
+                counter += 1
+                heapq.heappush(heap, (-f.generation, counter, f))
                 seen_set.add(f)
-                funcs.sort(key=lambda x: x.generation)
 
         add_func(self.creator)
 
-        while funcs:
-            f = funcs.pop()
+        while heap:
+            _, _, f = heapq.heappop(heap)
             gys = [output().grad for output in f.outputs]
             gxs = f.backward(*gys)
             if not isinstance(gxs, tuple):
@@ -90,12 +95,65 @@ class Variable:
 
     def __matmul__(self, other):
         from dptiny.functions import matmul
+
         return matmul(self, other)
+
+    def __add__(self, other):
+        from dptiny.functions import add
+
+        return add(self, other)
+
+    def __radd__(self, other):
+        from dptiny.functions import add
+
+        return add(other, self)
+
+    def __mul__(self, other):
+        from dptiny.functions import mul
+
+        return mul(self, other)
+
+    def __rmul__(self, other):
+        from dptiny.functions import mul
+
+        return mul(other, self)
+
+    def __neg__(self):
+        from dptiny.functions import neg
+
+        return neg(self)
+
+    def __sub__(self, other):
+        from dptiny.functions import sub
+
+        return sub(self, other)
+
+    def __rsub__(self, other):
+        from dptiny.functions import sub
+
+        return sub(other, self)
+
+    def __truediv__(self, other):
+        from dptiny.functions import div
+
+        return div(self, other)
+
+    def __rtruediv__(self, other):
+        from dptiny.functions import div
+
+        return div(other, self)
+
+    def __pow__(self, exponent):
+        from dptiny.functions import pow as pow_func
+
+        return pow_func(self, exponent)
+
 
 def as_array(x):
     if np.isscalar(x):
         return np.array(x)
     return x
+
 
 def as_variable(obj):
     if isinstance(obj, Variable):
