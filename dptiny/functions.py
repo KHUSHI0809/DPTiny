@@ -296,7 +296,7 @@ class GetItem(Function):
         return x[self.slices]
 
     def backward(self, gy):
-        return GetItemGrad(self.slices, self.x_shape)(gy)
+        return GetItemGrad(self.slices, self.x_shape)(gy).data
 
 
 class GetItemGrad(Function):

@@ -1,16 +1,17 @@
 import time
+
 from dptiny import (
-    Variable,
     MLP,
     SGD,
-    get_mnist,
     DataLoader,
-    softmax_cross_entropy,
-    no_grad,
-    use_gpu,
-    to_gpu,
-    is_gpu,
+    Variable,
+    get_mnist,
     is_available,
+    is_gpu,
+    no_grad,
+    softmax_cross_entropy,
+    to_gpu,
+    use_gpu,
 )
 
 # Enable GPU if CuPy is installed and a CUDA device is available.
@@ -45,7 +46,7 @@ max_epoch = 10
 initial_learning_rate = 0.1
 momentum = 0.9
 
-print(f"Training MLP with architecture: 784 -> 100 -> 100 -> 10")
+print("Training MLP with architecture: 784 -> 100 -> 100 -> 10")
 print(f"Batch size: {batch_size}, Initial learning rate: {initial_learning_rate}, Momentum: {momentum}")
 
 data_loader = DataLoader((X_train, y_train), batch_size)

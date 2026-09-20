@@ -6,11 +6,11 @@ from dptiny.optim import (
     SGD,
     Adam,
     AdamW,
+    ClipGrad,
     CosineAnnealingLR,
     ExponentialLR,
     RMSprop,
     StepLR,
-    ClipGrad,
     WeightDecay,
 )
 

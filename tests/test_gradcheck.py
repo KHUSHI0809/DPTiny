@@ -1,8 +1,7 @@
 import numpy as np
 
 import dptiny.functions as F
-from dptiny import test_mode
-from dptiny.backend import xp
+from dptiny import test_mode as eval_mode
 from dptiny.utils import gradient_check
 
 
@@ -161,6 +160,6 @@ def test_batch_norm_eval_mode():
     beta = np.random.randn(5)
     rm = np.zeros(5)
     rv = np.ones(5)
-    with test_mode():
+    with eval_mode():
         check(lambda a, g, b: F.batch_norm(a, g, b, rm, rv), x, gamma, beta)
     assert np.allclose(rm, 0)  # unchanged in eval mode

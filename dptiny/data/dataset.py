@@ -2,8 +2,6 @@
 
 from typing import Any, Callable, Optional, Tuple
 
-from dptiny.backend import xp
-
 
 class Dataset:
     """Base dataset class.

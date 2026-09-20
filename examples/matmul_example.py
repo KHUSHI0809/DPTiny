@@ -1,4 +1,5 @@
 import numpy as np
+
 from dptiny import Variable, matmul
 
 # Create input matrices

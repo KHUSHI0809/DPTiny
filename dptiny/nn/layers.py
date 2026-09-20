@@ -12,7 +12,10 @@ ShapeLike = Union[int, Sequence[int]]
 
 
 def _init_weight(
-    shape: Tuple[int, ...], init_type: str, fan_in: int
+    shape: Tuple[int, ...],
+    init_type: str,
+    fan_in: int,
+    dtype=xp.float32,
 ) -> "xp.ndarray":
     """Create a weight array using a standard initializer."""
     if init_type == "he":
@@ -21,12 +24,15 @@ def _init_weight(
         scale = xp.sqrt(1.0 / fan_in)
     elif init_type == "xavier_uniform":
         limit = xp.sqrt(6.0 / (fan_in + shape[-1]))
-        return xp.random.uniform(-limit, limit, shape).astype(xp.float32)
+        return xp.random.uniform(-limit, limit, shape).astype(dtype)
     elif init_type == "normal":
         scale = 0.01
     else:
-        scale = 0.01
-    return xp.random.randn(*shape).astype(xp.float32) * scale
+        raise ValueError(
+            f"unknown init_type {init_type!r}; expected one of "
+            "'he', 'xavier', 'xavier_uniform', 'normal'"
+        )
+    return xp.random.randn(*shape).astype(dtype) * scale
 
 
 class Linear(Module):
@@ -48,7 +54,9 @@ class Linear(Module):
         self.in_size = in_size
         self.out_size = out_size
 
-        W_data = _init_weight((in_size, out_size), init_type, in_size)
+        W_data = _init_weight(
+            (in_size, out_size), init_type, in_size, dtype
+        )
         self.W = Parameter(W_data)
         self.b: Optional[Parameter] = (
             None if nobias else Parameter(xp.zeros(out_size, dtype=dtype))
@@ -74,6 +82,7 @@ class Conv2d(Module):
         pad: Union[int, Tuple[int, int]] = 0,
         nobias: bool = False,
         init_type: str = "he",
+        dtype=xp.float32,
     ):
         super().__init__()
         self.in_channels = in_channels
@@ -86,13 +95,11 @@ class Conv2d(Module):
         fan_in = in_channels * KH * KW
 
         W_data = _init_weight(
-            (out_channels, in_channels, KH, KW), init_type, fan_in
+            (out_channels, in_channels, KH, KW), init_type, fan_in, dtype
         )
         self.W = Parameter(W_data)
         self.b: Optional[Parameter] = (
-            None
-            if nobias
-            else Parameter(xp.zeros(out_channels, dtype=xp.float32))
+            None if nobias else Parameter(xp.zeros(out_channels, dtype=dtype))
         )
 
     def forward(self, x):

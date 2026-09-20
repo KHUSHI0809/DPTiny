@@ -1,5 +1,6 @@
 import numpy as np
-from dptiny import Variable, Conv2d
+
+from dptiny import Conv2d, Variable
 
 # Random 8 images of 1x28x28 (MNIST-like shape: NCHW)
 x_data = np.random.randn(8, 1, 28, 28).astype(np.float32)

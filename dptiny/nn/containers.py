@@ -79,5 +79,6 @@ class MLP(Module):
 
     def accuracy(self, x, t):
         """Classification accuracy for inputs ``x`` and labels ``t``."""
-        y = self.forward(x)
-        return F.accuracy(y, t).data
+        with no_grad():
+            y = self.forward(x)
+        return float(F.accuracy(y, t).data)

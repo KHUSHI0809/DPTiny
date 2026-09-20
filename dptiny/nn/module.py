@@ -1,6 +1,6 @@
 """Base ``Module`` class for all neural-network components."""
 
-from typing import Any, Dict, Iterator, Optional, Tuple
+from typing import Any, Dict, Iterator, Tuple
 
 import numpy as np
 
@@ -19,17 +19,19 @@ class Module:
     """
 
     def __init__(self):
-        object.__setattr__(self, "_params", set())
-        object.__setattr__(self, "_buffers", set())
+        # Dicts used as insertion-ordered sets so parameter iteration order
+        # is deterministic across runs.
+        object.__setattr__(self, "_params", {})
+        object.__setattr__(self, "_buffers", {})
 
     def __setattr__(self, name: str, value: Any):
         if isinstance(value, (Parameter, Module)):
-            self._params.add(name)
+            self._params.setdefault(name, None)
         object.__setattr__(self, name, value)
 
     def register_buffer(self, name: str, arr: Any) -> None:
         """Register a persistent non-parameter array (e.g. running stats)."""
-        self._buffers.add(name)
+        self._buffers.setdefault(name, None)
         object.__setattr__(self, name, arr)
 
     def __call__(self, *inputs):

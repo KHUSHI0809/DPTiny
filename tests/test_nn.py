@@ -1,8 +1,9 @@
 import numpy as np
 
-import dptiny
-from dptiny import Config, Variable, no_grad, test_mode
+from dptiny import Config, Variable
+from dptiny import test_mode as eval_mode
 from dptiny.nn import (
+    MLP,
     AvgPool2d,
     BatchNorm,
     Conv2d,
@@ -10,7 +11,6 @@ from dptiny.nn import (
     Flatten,
     Linear,
     MaxPool2d,
-    MLP,
     Module,
     ReLU,
     Sequential,
@@ -22,6 +22,28 @@ def test_param_registration_and_names():
     names = dict(model.named_parameters())
     assert set(names) == {"l0.W", "l0.b", "l2.W", "l2.b"}
     assert len(list(model.parameters())) == 4
+
+
+def test_named_parameters_order():
+    model = MLP(4, [3], 2)
+    assert list(dict(model.named_parameters())) == [
+        "l1.W",
+        "l1.b",
+        "l2.W",
+        "l2.b",
+    ]
+    seq = Sequential(Linear(4, 3), Linear(3, 2))
+    names = list(dict(seq.named_parameters()))
+    assert names == ["l0.W", "l0.b", "l1.W", "l1.b"]
+
+
+def test_mlp_accuracy_returns_float():
+    model = MLP(4, [3], 2)
+    x = np.random.randn(6, 4).astype(np.float32)
+    t = np.array([0, 1, 0, 1, 0, 1])
+    acc = model.accuracy(Variable(x), t)
+    assert isinstance(acc, float)
+    assert 0.0 <= acc <= 1.0
 
 
 def test_params_dict_compat():
@@ -79,7 +101,7 @@ def test_dropout_train_eval():
 def test_dropout_eval_via_test_mode():
     d = Dropout(0.9)
     x = Variable(np.ones((50,), dtype=np.float32))
-    with test_mode():
+    with eval_mode():
         y = d(x)
         assert np.allclose(y.data, x.data)
 

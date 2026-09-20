@@ -1,6 +1,16 @@
-import numpy as np
 import time
-from dptiny import Variable, MLP, SGD, get_mnist, DataLoader, softmax_cross_entropy, no_grad
+
+import numpy as np
+
+from dptiny import (
+    MLP,
+    SGD,
+    DataLoader,
+    Variable,
+    get_mnist,
+    no_grad,
+    softmax_cross_entropy,
+)
 
 # Load MNIST dataset
 print("Loading MNIST dataset...")
@@ -24,7 +34,7 @@ max_epoch = 10
 initial_learning_rate = 0.1
 momentum = 0.9  # Add momentum for faster convergence
 
-print(f"Training MLP with architecture: 784 -> 100 -> 100 -> 10")
+print("Training MLP with architecture: 784 -> 100 -> 100 -> 10")
 print(f"Batch size: {batch_size}, Initial learning rate: {initial_learning_rate}, Momentum: {momentum}")
 
 # Create data loader
@@ -40,43 +50,43 @@ for epoch in range(max_epoch):
     # Learning rate scheduling - reduce learning rate over time
     learning_rate = initial_learning_rate * (0.1 ** (epoch // 3))
     optimizer.set_lr(learning_rate)
-    
+
     sum_loss = 0
     count = 0
-    
+
     for i, (x, t) in enumerate(data_loader):
         # Convert to Variable
         x = Variable(x)
-        
+
         # Forward
         y = model.forward(x)
-        
+
         # Compute loss
         loss = softmax_cross_entropy(y, t)
-        
+
         # Clear gradients
         model.cleargrads()
-        
+
         # Backward
         loss.backward()
-        
+
         # Update parameters using the optimizer
         optimizer.update(model.params)
-        
+
         # Accumulate loss
         if loss.data is not None:
             sum_loss += float(loss.data) * len(t)
             count += len(t)
-            
+
         # Print progress
         if (i + 1) % 20 == 0:
             avg_loss = sum_loss / count if count > 0 else float('inf')
             elapsed_time = time.time() - start_time
             print(f'epoch: {epoch+1}, batch: {i+1}, loss: {avg_loss:.4f}, lr: {learning_rate:.6f}, time: {elapsed_time:.2f}s')
-    
+
     # Compute average loss for the epoch
     avg_loss = sum_loss / count if count > 0 else float('inf')
-    
+
     # Evaluate on test set
     sum_acc = 0
     count = 0
@@ -87,9 +97,9 @@ for epoch in range(max_epoch):
             acc = (pred == t).sum() / len(t)
             sum_acc += acc * len(t)
             count += len(t)
-    
+
     test_acc = sum_acc / count if count > 0 else 0.0
-    
+
     elapsed_time = time.time() - start_time
     print(f'epoch: {epoch+1}, final loss: {avg_loss:.4f}, accuracy: {test_acc:.4f}, time: {elapsed_time:.2f}s')
 
@@ -103,7 +113,7 @@ with no_grad():
         acc = (pred == t).sum() / len(t)
         sum_acc += acc * len(t)
         count += len(t)
-    
+
     final_acc = sum_acc / count
     print(f"\nTraining completed in {time.time() - start_time:.2f} seconds")
     print(f"Final test accuracy: {final_acc:.4f}")

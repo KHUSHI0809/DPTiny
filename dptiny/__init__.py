@@ -58,7 +58,7 @@ from dptiny.functions import (
     tanh,
     transpose,
 )
-from dptiny.nn import Conv2d, Linear, MLP
+from dptiny.nn import MLP, Conv2d, Linear
 from dptiny.optim import SGD, Adam
 
 __version__ = "0.2.0"

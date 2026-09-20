@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 import dptiny
-from dptiny import Variable, no_grad
+from dptiny import Variable
 from dptiny.backend import xp
 
 pytestmark = pytest.mark.skipif(
@@ -74,7 +74,7 @@ def test_conv2d_gpu_matches_cpu(gpu):
 
 
 def test_variable_to_gpu_and_back(gpu):
-    x = Variable(np.array([1.0, 2.0], dtype=np.float32))
+    x = Variable(xp.asarray(np.array([1.0, 2.0], dtype=np.float32)))
     x.to_gpu()
     assert dptiny.is_gpu()
     x.to_cpu()

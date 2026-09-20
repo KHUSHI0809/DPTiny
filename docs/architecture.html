@@ -202,10 +202,14 @@
     <section>
       <h2>1. Class Architecture</h2>
       <p>
-        DPTiny is built around three core abstractions: <code>Variable</code>
+        DPTiny is built around four core abstractions: <code>Variable</code>
         wraps array data and gradients, <code>Function</code> defines a forward
-        operation and its local backward rule, and <code>Layer</code> owns
-        learnable parameters used by models.
+        operation and its local backward rule, <code>Parameter</code> is a
+        <code>Variable</code> that marks learnable weights, and
+        <code>Module</code> owns parameters and composes into models
+        (<code>Linear</code>, <code>Conv2d</code>, <code>Sequential</code>,
+        <code>MLP</code>, ...). Optimizers live in <code>dptiny.optim</code>
+        and datasets/loaders in <code>dptiny.data</code>.
       </p>
 
       <div class="mermaid">

@@ -1,6 +1,6 @@
 """Base ``Optimizer`` class for DPTiny."""
 
-from typing import Any, Callable, Dict, Iterable, List, Optional
+from typing import Any, Callable, Iterable, List, Optional
 
 from dptiny.core import Variable
 

@@ -24,7 +24,7 @@ Switch backends globally::
     use_cpu()
 """
 
-from typing import Any, Union
+from typing import Any
 
 import numpy as _np
 
