@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DPTiny Architecture &amp; Compute Graph</title>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --panel-light: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-2: #818cf8;
+      --success: #34d399;
+      --danger: #f87171;
+      --warning: #fbbf24;
+      --border: rgba(148, 163, 184, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #fff;
+      padding: 3rem 1rem;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 2.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    header p {
+      margin: 0.5rem 0 0;
+      opacity: 0.9;
+      font-size: 1.125rem;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+    }
+
+    section {
+      margin-bottom: 3rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 2rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    h2 {
+      color: var(--accent);
+      margin-top: 0;
+      font-size: 1.75rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+
+    h3 {
+      color: var(--accent-2);
+      margin-top: 1.5rem;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin: 1rem 0 1.5rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+    }
+
+    .mermaid {
+      background: #0b1120;
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      overflow-x: auto;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: var(--panel-light);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+    }
+
+    .card h4 {
+      margin: 0 0 0.5rem;
+      color: var(--accent);
+    }
+
+    .card code {
+      color: var(--warning);
+      font-size: 0.9rem;
+    }
+
+    .forward {
+      color: var(--success);
+    }
+
+    .backward {
+      color: var(--danger);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--border);
+      padding: 0.75rem;
+      text-align: left;
+    }
+
+    th {
+      background: var(--panel-light);
+      color: var(--accent);
+    }
+
+    code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 0.15rem 0.35rem;
+      border-radius: 0.25rem;
+    }
+
+    pre {
+      background: #0b1120;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      overflow-x: auto;
+      font-size: 0.9rem;
+    }
+
+    .note {
+      border-left: 4px solid var(--accent);
+      background: rgba(56, 189, 248, 0.08);
+      padding: 1rem;
+      border-radius: 0 0.5rem 0.5rem 0;
+      margin-top: 1rem;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>DPTiny Architecture</h1>
+    <p>Class hierarchy, compute graph, and backpropagation flow</p>
+  </header>
+
+  <main>
+    <section>
+      <h2>1. Class Architecture</h2>
+      <p>
+        DPTiny is built around three core abstractions: <code>Variable</code>
+        wraps array data and gradients, <code>Function</code> defines a forward
+        operation and its local backward rule, and <code>Layer</code> owns
+        learnable parameters used by models.
+      </p>
+
+      <div class="mermaid">
+classDiagram
+    direction TB
+
+    class Variable {
+        +ndarray data
+        +ndarray grad
+        +Function creator
+        +int generation
+        +backward(retain_grad)
+    }
+
+    class Config {
+        +bool enable_backprop
+    }
+
+    class Function {
+        <<abstract>>
+        +list inputs
+        +list outputs
+        +int generation
+        +__call__(*inputs)
+        +forward(*xs)*
+        +backward(*gys)*
+    }
+
+    class Layer {
+        <<abstract>>
+        +dict params
+        +cleargrads()
+        +forward(inputs)*
+        +backward(grads)*
+    }
+
+    class Add
+    class Mul
+    class MatMul
+    class Conv2d_Func
+    class Reshape
+    class ReLU_Func
+    class SoftmaxCrossEntropy
+
+    class Linear
+    class Conv2d
+    class MLP
+    class ReLU
+
+    Variable --> Function : creator
+    Function --> Variable : inputs / outputs
+    Function <|-- Add
+    Function <|-- Mul
+    Function <|-- MatMul
+    Function <|-- Conv2d_Func
+    Function <|-- Reshape
+    Function <|-- ReLU_Func
+    Function <|-- SoftmaxCrossEntropy
+    Layer <|-- Linear
+    Layer <|-- Conv2d
+    Layer <|-- ReLU
+    Layer <|-- MLP
+    Linear --> Variable : W, b
+    Conv2d --> Variable : W, b
+    MLP --> Linear : contains
+    MLP --> ReLU : contains
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h4>Variable</h4>
+          <p>
+            Holds <code>data</code>, <code>grad</code>, and a
+            <code>creator</code> function. It is the node of the compute graph.
+          </p>
+        </div>
+        <div class="card">
+          <h4>Function</h4>
+          <p>
+            Encapsulates a forward operation and how to back-propagate local
+            gradients via <code>backward()</code>.
+          </p>
+        </div>
+        <div class="card">
+          <h4>Layer</h4>
+          <p>
+            Holds learnable parameters (<code>params</code>) and composes
+            Functions into network building blocks.
+          </p>
+        </div>
+        <div class="card">
+          <h4>Config</h4>
+          <p>
+            Global flag <code>enable_backprop</code>; disabled during inference
+            by the <code>no_grad()</code> context manager.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. The Compute Graph</h2>
+      <p>
+        Operations on <code>Variable</code>s build a directed acyclic graph.
+        Each function records its inputs and weak references to its outputs,
+        enabling gradient propagation from loss to parameters.
+      </p>
+
+      <div class="legend">
+        <div class="legend-item">
+          <div class="dot" style="background: var(--accent)"></div>
+          <span>Variable / data node</span>
+        </div>
+        <div class="legend-item">
+          <div class="dot" style="background: var(--warning)"></div>
+          <span>Function / operation node</span>
+        </div>
+        <div class="legend-item">
+          <div class="dot" style="background: var(--success)"></div>
+          <span>Forward data flow</span>
+        </div>
+        <div class="legend-item">
+          <div class="dot" style="background: var(--danger)"></div>
+          <span>Backward gradient flow</span>
+        </div>
+      </div>
+
+      <div class="mermaid">
+flowchart TB
+    x["x<br/>data: 2.0<br/>grad: 3.0"]
+    y["y<br/>data: 3.0<br/>grad: 2.0"]
+    mul{"Mul"}
+    z["z<br/>data: 6.0<br/>grad: 1.0"]
+
+    x -->|forward| mul
+    y -->|forward| mul
+    mul -->|forward| z
+    z -->|backward<br/>gy=1| mul
+    mul -->|gx = gy * y| x
+    mul -->|gy = gy * x| y
+      </div>
+
+      <div class="note">
+        <strong>Example:</strong> <code>z = x * y</code>. In forward mode values
+        flow down; during <code>z.backward()</code> gradients flow up using the
+        chain rule.
+      </div>
+    </section>
+
+    <section>
+      <h2>3. Forward Pass</h2>
+      <p>
+        <code>Function.__call__</code> performs three things: (1) converts inputs
+        to <code>Variable</code>s, (2) runs <code>forward()</code> on raw arrays,
+        and (3) wraps the result, records the creator, and increments the
+        generation.
+      </p>
+
+      <pre><code>class Function(ABC):
+    def __call__(self, *inputs):
+        inputs = [as_variable(x) for x in inputs]
+        xs = [x.data for x in inputs]
+        ys = self.forward(*xs)
+        outputs = [Variable(as_array(y)) for y in ys]
+
+        if Config.enable_backprop:
+            self.generation = max(x.generation for x in inputs)
+            for output in outputs:
+                output.creator = self
+            self.inputs = inputs
+            self.outputs = [weakref.ref(output) for output in outputs]
+
+        return outputs[0] if len(outputs) == 1 else outputs</code></pre>
+
+      <div class="mermaid">
+flowchart LR
+    A[Input Variables] -->|data| B(Function forward)
+    B -->|new Variable| C[Output Variables]
+    C -->|creator| B
+      </div>
+    </section>
+
+    <section>
+      <h2>4. Backward Pass (Backpropagation)</h2>
+      <p>
+        <code>Variable.backward()</code> walks the graph in reverse topological
+        order using a max-heap keyed by <code>generation</code>. At each
+        function, output gradients are gathered and passed to the function's
+        <code>backward()</code> to compute input gradients. Gradients are
+        accumulated when a variable is used multiple times.
+      </p>
+
+      <pre><code>def backward(self, retain_grad=False):
+    if self.grad is None:
+        self.grad = xp.ones_like(self.data)
+
+    heap = []
+    seen_set = set()
+    counter = 0
+
+    def add_func(f):
+        if f not in seen_set:
+            heapq.heappush(heap, (-f.generation, counter, f))
+            seen_set.add(f)
+
+    add_func(self.creator)
+
+    while heap:
+        _, _, f = heapq.heappop(heap)
+        gys = [output().grad for output in f.outputs]
+        gxs = f.backward(*gys)
+        if not isinstance(gxs, tuple):
+            gxs = (gxs,)
+
+        for x, gx in zip(f.inputs, gxs):
+            x.grad = gx if x.grad is None else x.grad + gx
+            if x.creator is not None:
+                add_func(x.creator)</code></pre>
+
+      <div class="mermaid">
+flowchart BT
+    Loss["Loss<br/>grad = 1.0"] -->|pop highest gen| B
+    B{"SoftmaxCrossEntropy"} --> A["Logits"]
+    A --> C{"Linear"}
+    C --> D["Hidden"]
+    D --> E{"ReLU"}
+    E --> F["Input / Params"]
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Step</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1. Seed</td>
+            <td>Set loss gradient to ones: <code>grad = 1.0</code></td>
+          </tr>
+          <tr>
+            <td>2. Order</td>
+            <td>Process functions from highest generation to lowest</td>
+          </tr>
+          <tr>
+            <td>3. Local rule</td>
+            <td>Call <code>f.backward(*gys)</code></td>
+          </tr>
+          <tr>
+            <td>4. Accumulate</td>
+            <td><code>x.grad = x.grad + gx</code> for shared variables</td>
+          </tr>
+          <tr>
+            <td>5. Repeat</td>
+            <td>Enqueue creator functions until the heap is empty</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>5. End-to-End: MNIST MLP Example</h2>
+      <p>
+        Below is the full forward/backward pipeline for a three-layer MLP
+        trained on MNIST.
+      </p>
+
+      <div class="mermaid">
+flowchart TD
+    Input["Input x<br/>(N, 784)"] --> L1{"Linear(784, 100)"}
+    L1 --> H1["Hidden<br/>(N, 100)"]
+    H1 --> R1{"ReLU"}
+    R1 --> H2["Hidden<br/>(N, 100)"]
+    H2 --> R2{"ReLU"}
+    R2 --> L2{"Linear(100, 10)"}
+    L2 --> Logits["Logits<br/>(N, 10)"]
+    Logits --> Loss{"SoftmaxCrossEntropy"}
+    Labels["Labels t"] --> Loss
+    Loss --> Out["Loss scalar"]
+
+    Out -->|backward| Loss
+    Loss -->|dx = (softmax - t) / N| Logits
+    Logits -->|dL/dW = x.T @ gy| L2
+    Logits -->|dL/db = sum(gy)| L2
+    L2 -->|gy @ W.T| H2
+    H2 -->|mask| R2
+    R2 -->|gy @ W.T| H1
+    H1 -->|mask| R1
+    R1 -->|gy @ W.T| L1
+      </div>
+
+      <pre><code>for x, t in data_loader:
+    x = Variable(x)
+    y = model.forward(x)
+    loss = softmax_cross_entropy(y, t)
+
+    model.cleargrads()
+    loss.backward()
+    optimizer.update(model.params)</code></pre>
+
+      <div class="note">
+        <strong>Key property:</strong> gradients flow all the way from
+        <code>loss</code> to every <code>Linear.W</code> and
+        <code>Linear.b</code>, enabling gradient-based optimization.
+      </div>
+    </section>
+
+    <section>
+      <h2>6. GPU Backend</h2>
+      <p>
+        DPTiny abstracts NumPy/CuPy through a single <code>xp</code> backend.
+        Calling <code>use_gpu()</code> makes all array creation and math run on
+        the GPU while the autograd engine itself stays unchanged.
+      </p>
+
+      <div class="mermaid">
+flowchart LR
+    User["User code"] -->|use_gpu| Backend["dptiny.backend.xp"]
+    Backend -->|cpu mode| NumPy[NumPy]
+    Backend -->|gpu mode| CuPy[CuPy / CUDA]
+    NumPy -->|array ops| Autograd["Autograd engine"]
+    CuPy -->|array ops| Autograd
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Generated for DPTiny · Minimal deep-learning framework with autograd
+  </footer>
+</body>
+</html>

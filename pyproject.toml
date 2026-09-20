@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dptiny"
+version = "0.2.0"
+description = "A minimal implementation of deep learning framework"
+authors = [{ name = "Weizhe" }]
+requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+    "matplotlib",
+    "scikit-learn",
+]
+
+[project.optional-dependencies]
+gpu = ["cupy>=12"]
+dev = ["pytest", "ruff"]
+
+[tool.setuptools.packages.find]
+include = ["dptiny*"]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
